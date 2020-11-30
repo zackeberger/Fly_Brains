@@ -27,50 +27,68 @@ def get_data():
 
 
     M1_data = genfromtxt('./data/20201021_adult_connectome_M1.txt', delimiter=',', dtype = "str", skip_header=1)
-    #print (M1_data)
-    #print(M1_data.shape)
 
     M5_data = genfromtxt('./data/20201021_adult_connectome_M5.txt', delimiter=',', dtype = "str", skip_header=1)
-    #print (M5_data)
-    #print(M5_data.shape)
 
     Trans_data = genfromtxt('./data/20201021_developmental_transcriptome_48h.txt', delimiter=',', dtype = "str", skip_header=1)
-    #print (Trans_data)
-    #print(Trans_data.shape)
-
-
-    # extract parts of an array
-    #M1_sub = M1_data[1:10, 2]
-    #print(M1_sub)
-    #print(M1_sub.shape)
-
-    #M5_sub = M5_data[1:10, 2]
-    #print(M5_sub)
-    #print(M5_sub.shape)
-
-    # covert extracted parts from String to Float
-    #y1 = M1_sub.astype(np.float)
-    #y5 = M5_sub.astype(np.float)
-
-    # add to converted arrays
-    #print (add(y1,y5))
 
     return M1_data, M5_data, Trans_data
 
-def np_to_edgelist(data):
+def np_to_edgelist(edges, features):
 
-    print(data[0:10])
-    neurons = np.unique(data[:,[0,1]])
+    neuron_to_feature = {features[i,0]:features[i,1:] for i in range(features.shape[0])}
 
-    print(neurons)
+    i = 0
+    while(1):
+        if(i >= edges.shape[0]):
+            break
+        if((edges[i][0] not in neuron_to_feature.keys()) or (edges[i][1] not in neuron_to_feature.keys())):
+            edges = np.delete(edges, i, axis=0)
+        else:
+            i += 1
+
+    #print(edges[0:10])
+    neurons = np.unique(edges[:,[0,1]])
+
+    #print(neurons)
 
     neuron_to_ind = {neurons[ind]:ind for ind in range(neurons.shape[0])}
     ind_to_neuron = {ind:neurons[ind] for ind in range(neurons.shape[0])}
 
     edgelist = []
     
-    for i in range(data.shape[0]):
-        edgelist.append([neuron_to_ind[data[i,0]], neuron_to_ind[data[i,1]], data[i,2]])
+    for i in range(edges.shape[0]):
+        edgelist.append([neuron_to_ind[edges[i,0]], neuron_to_ind[edges[i,1]], edges[i,2]])
 
-    print(edgelist[0:10])
+    neuron_to_feature = {features[i,0]:features[i,1:] for i in range(features.shape[0]) if features[i,0] in neurons}
 
+    features_arr = np.zeros((len(neurons), features.shape[1]-1))
+
+    for i in range(neurons.shape[0]):
+        features_arr[i] = neuron_to_feature[ind_to_neuron[i]]
+
+    return edgelist, features_arr, ind_to_neuron 
+
+def get_network():
+
+    M1, M5, trans_data = get_data()
+    edges, features, ind_to_neurons = np_to_edgelist(M1, trans_data)
+
+    return edges, features, ind_to_neurons
+
+def network_to_mat(edges, features):
+
+    e, m = features.shape
+    n = len(edges)
+
+    X = np.zeros((n, 2*m))
+    Y = np.zeros(n)
+
+    for i in range(n):
+
+        u, v, w = edges[i]
+        X[i,:m] = features[u]
+        X[i,m:] = features[v]
+        Y[i] = w
+
+    return X, Y
