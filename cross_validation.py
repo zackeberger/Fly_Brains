@@ -259,6 +259,10 @@ def main(argv):
     edges, features, ind_to_neuron = get_network() 
 
     X, y = network_to_mat(edges,features)
+  
+    # If feature is > 0, set to 1
+    # If feature == 0, set to 0
+    y[y > 0] = 1
 
     Xs = []
     ys = []
