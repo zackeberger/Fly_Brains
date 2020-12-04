@@ -13,24 +13,13 @@ from numpy import genfromtxt
 from numpy import add
 
 
-def get_data():
-    f = open('./data/20201021_developmental_transcriptome_48h.txt', 'r+')
-    lines = f.readlines() # read old content
-    f.seek(0) # go back to the beginning of the file
-    ch = f.read(1)
-    if ch != 'X':
-        f.seek(0)
-        f.write("X,") # write new content at the beginning
-        for line in lines: # write old content after new
-            f.write(line)   
-    f.close()
-
+def get_data(time=48):
 
     M1_data = genfromtxt('./data/20201021_adult_connectome_M1.txt', delimiter=',', dtype = "str", skip_header=1)
 
     M5_data = genfromtxt('./data/20201021_adult_connectome_M5.txt', delimiter=',', dtype = "str", skip_header=1)
 
-    Trans_data = genfromtxt('./data/20201021_developmental_transcriptome_48h.txt', delimiter=',', dtype = "str", skip_header=1)
+    Trans_data = genfromtxt('./data/20201021_developmental_transcriptome_' + str(time) + 'h.txt', delimiter=',', dtype = "str", skip_header=1)
 
     return M1_data, M5_data, Trans_data
 
@@ -69,9 +58,9 @@ def np_to_edgelist(edges, features):
 
     return edgelist, features_arr, ind_to_neuron 
 
-def get_network():
+def get_network(time=48):
 
-    M1, M5, trans_data = get_data()
+    M1, M5, trans_data = get_data(time=time)
     edges, features, ind_to_neurons = np_to_edgelist(M1, trans_data)
 
     return edges, features, ind_to_neurons

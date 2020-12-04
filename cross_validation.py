@@ -153,6 +153,38 @@ def get_accuracy_net(X_train, y_train, X_test, y_test, num_splits=5, epochs=35, 
 
     return test_acc, test_acc_0, test_acc_1
 
+def net_single(X_train, y_train, X_test, y_test, num_splits=5, epochs=35, lrs=[0.1]):
+
+    accuracies = []
+
+    X_test = torch.Tensor(X_test).cuda()
+    y_test = torch.Tensor(y_test).cuda()
+
+    for i in trange(X_train.shape[1]):
+
+        X_single = X_train[:,[i]]
+
+        for lr in lrs:
+
+            best_acc = 0
+            best_lr = 0
+
+            acc = cross_validation_net(X_single, y_train, num_splits = num_splits, epochs=epochs, lr=lr)
+
+            if(acc > best_acc):
+                best_acc = acc
+                best_lr = lrs
+
+        X_training, X_val, y_training, y_val = train_test_split(X_single, y_train, test_size=0.2, random_state=0) 
+
+        acc, net = train(X_training, y_training, X_val, y_val, epochs=epochs, lr=best_lr)
+
+        y_pred_test = net(X_test[:,[i]])
+        test_acc = y_test[y_test.long()==torch.argmax(y_pred_test,axis=1)].shape[0]/y_test.shape[0]
+        accuracies.append(test_acc)
+
+    return np.asarray(accuracies)
+
 def cross_validation(clf_func, X, y, param, num_splits = 5):
     """
     Given a classifier clf and training data X with labels y, performs
@@ -206,16 +238,64 @@ def get_accuracy(X_train, y_train, X_test, y_test, clf_func, params, num_splits 
 
     return acc, acc_0, acc_1, best_param
 
+def run_single(X_train, y_train, X_test, y_test, clf_func, params, num_splits=5):
+
+    accuracies = []
+
+    for i in trange(X_train.shape[1]):
+
+        X_single = X_train[:,[i]]
+
+        best_acc, best_param = select_parameters(X_single, y_train, clf_func, params, num_splits=5)
+
+        clf = clf_func(best_param)
+        clf.fit(X_single, y_train)
+
+        y_pred = clf.predict(X_test[:,[i]])
+        acc = metrics.accuracy_score(y_test, y_pred)
+        accuracies.append(acc)
+
+    return np.asarray(accuracies)
+
+def calc_entropy(X, y):
+
+    def entropy(x):
+
+        return stats.entropy(np.bincount(x) / len(x))
+
+    base = entropy(y)
+    entropy_gain = []
+    for i in range(X.shape[1]):
+
+        new_entropy = 0
+
+        for x in np.unique(X[:,i]):
+
+            y_subset = y[X[:,i]==x]
+            new_entropy += entropy(y_subset) * len(y_subset) / len(y)
+
+        entropy_gain.append(base - new_entropy)
+
+    return np.asarray(entropy_gain)
+
+def lin_regression(X, y):
+
+    r2_values = []
+
+    for i in range(X.shape[1]):
+
+        slope, intercept, r_value, p_value, std_err = stats.linregress(X[:,i],y)
+        r2_values.append(r_value**2)
+        
 def handle_args(argv):
 
     clf = ""
     params = ""
     single = False
-    top = False
-    bottom = False
+    time = 48
 
     try:
-        opts, args = getopt.getopt(argv,"hc:p:stb",["clf=","params="])
+        opts, args = getopt.getopt(argv,"hc:p:t:s",["clf=","params=", "time=", "single="])
     except getopt.GetoptError:
         print('python3 cross_validation.py --clf <clf> --params <p1,p2,p3>')
         sys.exit(2)
@@ -227,6 +307,10 @@ def handle_args(argv):
             clf = arg
         elif opt in ("-p", "--params"):
             params = arg
+        elif opt in ("-t", "--time"):
+            time = arg
+        elif opt in ("-s", "--single"):
+            single = True
 
 
     if clf == "svm":
@@ -248,24 +332,26 @@ def handle_args(argv):
     if(len(params) > 0):
         params = [float(elem) for elem in params.split(',')]
 
-    return clf_func, params, clf
+    return clf_func, params, clf, time, single
 
 def main(argv):
 
 
     num_shuffles = 10
-    clf_func, params, clf_str = handle_args(argv)
+    clf_func, params, clf_str, time, single = handle_args(argv)
 
-    edges, features, ind_to_neuron = get_network() 
+    edges, features, ind_to_neuron = get_network(time=time) 
 
     X, y = network_to_mat(edges,features)
   
     # If feature is > 0, set to 1
     # If feature == 0, set to 0
     y[y > 0] = 1
+    # np.random.shuffle(y) to shuffle labels
 
     Xs = []
     ys = []
+
     for i in range(num_shuffles):
 
         idx = np.random.RandomState(seed=i).permutation(X.shape[0])
@@ -274,59 +360,117 @@ def main(argv):
         Xs.append(np.asarray(X_shuffle))
         ys.append(np.asarray(y_shuffle))
 
-    if clf_str == "linreg":
+    if(clf_str == "entropy"):
 
-        r_values = []
-        p_values = []
-        for  i in range(num_shuffles):
-            X, y, = Xs[i], ys[i]
+        entropies = np.zeros(Xs[0].shape[1])
 
-            model = LinearRegression().fit(X,y)
-            r_values.append(model.score(X,y))
-
-        print(sum(r_values) / len(r_values))
-
-    elif clf_str == "net":
-
-        accs = 0
-        accs_0 = 0
-        accs_1 = 0
-        for i in trange(num_shuffles):
+        for i in range(num_shuffles):
             X = Xs[i]
             y = ys[i]
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
 
-            acc, acc_0, acc_1 = get_accuracy_net(X_train, y_train, X_test, y_test, lrs=params)
-            accs += acc
-            accs_0 += acc_0
-            accs_1 += acc_1
+            ent = calc_entropy(X,y)
+            entropies = entropies * (i)/float(i+1) + ent / float(i+1)
 
-        print("Accuracy overall: ", accs / num_shuffles)
-        print("Accuracy non:     ", accs_0 / num_shuffles)
-        print("Accuracy high:    ", accs_1 / num_shuffles)
+        np.savetxt("entropies.txt", entropies, fmt='%10.5f')
+
+
+    elif clf_str == "linreg":
+
+        if(single):
+            r2_values = np.zeros(Xs[0].shape[1])
+
+            for i in range(num_shuffles):
+                X = Xs[i]
+                y = ys[i]
+
+                r2_values = r2_values * (i)/float(i+1) + lin_regression(X,y) / float(i+1)
+
+            np.savetxt("r2.txt", r2_values, fmt='%10.5f')
+
+        else:
+
+            r_values = []
+            p_values = []
+            for  i in range(num_shuffles):
+                X, y, = Xs[i], ys[i]
+
+                model = LinearRegression().fit(X,y)
+                r_values.append(model.score(X,y))
+
+            print(sum(r_values) / len(r_values))
+            #print(sum(p_values) / len(p_values))
+            #print(p_values)
+
+
+    elif clf_str == "net":
+        if(single):
+            accs = 0
+            for i in trange(num_shuffles):
+                X = Xs[i]
+                y = ys[i]
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+                acc = net_single(X_train, y_train, X_test, y_test, lrs=params)
+                accs = accs * (i)/float(i+1) + acc / float(i+1)
+
+            np.savetxt("net_single.txt", accs, fmt='%10.5f')
+
+
+        else:
+            accs = 0
+            accs_0 = 0
+            accs_1 = 0
+            for i in trange(num_shuffles):
+                X = Xs[i]
+                y = ys[i]
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+
+                acc, acc_0, acc_1 = get_accuracy_net(X_train, y_train, X_test, y_test, lrs=params)
+                accs += acc
+                accs_0 += acc_0
+                accs_1 += acc_1
+
+            print("Accuracy overall: ", accs / num_shuffles)
+            print("Accuracy non:     ", accs_0 / num_shuffles)
+            print("Accuracy high:    ", accs_1 / num_shuffles)
 
     else:
 
-        accs = 0
-        accs_0 = 0
-        accs_1 = 0
-        best_params = []
-        for i in trange(num_shuffles):
-            X = Xs[i]
-            y = ys[i]
+        if (single):
 
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0, stratify=y)
+            accuracies = np.zeros(Xs[0].shape[1])
 
-            acc, acc_0, acc_1, best_param = get_accuracy(X_train, y_train, X_test, y_test, clf_func, params)
-            accs += acc
-            accs_0 += acc_0
-            accs_1 += acc_1
-            best_params.append(best_param)
+            print(type(accuracies[0]))
+            for i in range(num_shuffles):
+                X = Xs[i]
+                y = ys[i]
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
 
-        print("Accuracy overall: ", accs / num_shuffles)
-        print("Accuracy non:     ", accs_0 / num_shuffles)
-        print("Accuracy high:    ", accs_1 / num_shuffles)
-        print(best_params)
+                acc = run_single(X_train, y_train, X_test, y_test, clf_func, params)
+                accuracies = accuracies * (i)/float(i+1) + acc / float(i+1)
+
+            np.savetxt(str(clf_str) + "_single.txt", accuracies, fmt='%10.5f')
+
+        else:
+            accs = 0
+            accs_0 = 0
+            accs_1 = 0
+            best_params = []
+            for i in trange(num_shuffles):
+                X = Xs[i]
+                y = ys[i]
+
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0, stratify=y)
+
+                acc, acc_0, acc_1, best_param = get_accuracy(X_train, y_train, X_test, y_test, clf_func, params)
+                accs += acc
+                accs_0 += acc_0
+                accs_1 += acc_1
+                best_params.append(best_param)
+
+            print("Accuracy overall: ", accs / num_shuffles)
+            print("Accuracy non:     ", accs_0 / num_shuffles)
+            print("Accuracy high:    ", accs_1 / num_shuffles)
+            print(best_params)
 
 if __name__ == '__main__':
     main(sys.argv[1:])
