@@ -286,6 +286,8 @@ def lin_regression(X, y):
 
         slope, intercept, r_value, p_value, std_err = stats.linregress(X[:,i],y)
         r2_values.append(r_value**2)
+
+    return np.asarray(r2_values)
         
 def handle_args(argv):
 
@@ -295,13 +297,13 @@ def handle_args(argv):
     time = 48
 
     try:
-        opts, args = getopt.getopt(argv,"hc:p:t:s",["clf=","params=", "time=", "single="])
+        opts, args = getopt.getopt(argv,"hc:p:t:s",["clf=","params=", "time=","single"])
     except getopt.GetoptError:
-        print('python3 cross_validation.py --clf <clf> --params <p1,p2,p3>')
+        print('python3 cross_validation.py --clf <clf> --params <p1,p2,p3> [--time=t --single]')
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
-            print('python3 cross_validation.py --clf <clf> -params <p1,p2,p3>')
+            print('python3 cross_validation.py --clf <clf> -params <p1,p2,p3> [--time=t --single]')
             sys.exit()
         elif opt in ("-c", "--clf"):
             clf = arg
