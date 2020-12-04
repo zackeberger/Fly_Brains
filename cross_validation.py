@@ -67,12 +67,12 @@ class Net(nn.Module):
 
 def train(X_train, y_train, X_val, y_val , epochs=35, lr=0.1):
 
-    X_train = torch.Tensor(X_train).cuda()
-    y_train = torch.Tensor(y_train).cuda()
-    X_val = torch.Tensor(X_val).cuda()
-    y_val = torch.Tensor(y_val).cuda()
+    X_train = torch.Tensor(X_train)#.cuda()
+    y_train = torch.Tensor(y_train)#.cuda()
+    X_val = torch.Tensor(X_val)#.cuda()
+    y_val = torch.Tensor(y_val)#.cuda()
 
-    net = Net(X_train.shape[1]).cuda()
+    net = Net(X_train.shape[1])#.cuda()
 
     losses_train = []
     losses_val = []
@@ -141,8 +141,8 @@ def get_accuracy_net(X_train, y_train, X_test, y_test, num_splits=5, epochs=35, 
 
     acc, net = train(X_training, y_training, X_val, y_val, epochs=epochs, lr=best_lr)
 
-    X_test = torch.Tensor(X_test).cuda()
-    y_test = torch.Tensor(y_test).cuda()
+    X_test = torch.Tensor(X_test)#.cuda()
+    y_test = torch.Tensor(y_test)#.cuda()
 
     y_pred_test = net(X_test)
 
@@ -157,8 +157,8 @@ def net_single(X_train, y_train, X_test, y_test, num_splits=5, epochs=35, lrs=[0
 
     accuracies = []
 
-    X_test = torch.Tensor(X_test).cuda()
-    y_test = torch.Tensor(y_test).cuda()
+    X_test = torch.Tensor(X_test)#.cuda()
+    y_test = torch.Tensor(y_test)#.cuda()
 
     for i in trange(X_train.shape[1]):
 
