@@ -22,7 +22,7 @@ from sklearn import metrics
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as func
 
 import time
 
@@ -52,17 +52,110 @@ class Net(nn.Module):
 
         x = self.fc1(x)
         x = self.bn1(x)
-        x = F.relu(x)
+        x = Func.relu(x)
         x = self.drop1(x)
 
         x = self.fc2(x)
         x = self.bn2(x)
-        x = F.relu(x)
+        x = Func.relu(x)
         x = self.drop2(x)
 
         x = self.fc3(x)
 
         return x
+
+
+class GNN():
+    def __init__(self, N, D, H, F, num_layers=2):
+        super(GNN, self).__init__()
+
+        self.Ws = []
+        self.num_layers = num_layers
+
+        lay_dim = [D] + H + [F]
+        for i in range(num_layers):
+            fc = nn.Linear(lay_dim[i+1], lay_dim[i], bias=False)
+            self.Ws.append(fc)
+
+
+    def forward(self, A, X):
+        
+        A_hat = get_A_hat(A)
+        x = X
+        
+        for i in range(self.num_layers):
+            x = A_hat @ self.Ws[i](X.T).T
+            if i < self.num_layers - 1:
+                x = Func.relu(X)
+    
+        return nn.Softmax(x)
+
+
+    def get_squig():
+        print("squig")
+
+    # A, A_hat are NxN
+    # X is NxD
+    # W_0 is DxH -- H is hidden layer size
+    # W_1 is HxF -- F is # of classes
+    # Z is NxF
+
+    def get_A_hat(A):
+         
+        A_squig = A + np.identity(A.shape(0))
+        D_squig = np.diag(A_squig.sum(axis=1)) # Axis is 0 or 1. Look this up.
+        
+        D_squig_mod = np.diag(np.power(D_squig, -0.5))
+        A_hat = D_squig_mod @ A_squig @ D_squig_mod
+        
+        return A_hat
+
+
+
+
+def train_GNN(X_train, y_train, X_val, y_val , epochs=35, lr=0.1):
+
+    X_train = torch.Tensor(X_train)#.cuda()
+    y_train = torch.Tensor(y_train)#.cuda()
+    X_val = torch.Tensor(X_val)#.cuda()
+    y_val = torch.Tensor(y_val)#.cuda()
+
+    net = Net(X_train.shape[1])#.cuda()
+
+    losses_train = []
+    losses_val = []
+    acc = []
+    nets = []
+
+    criterion = nn.CrossEntropyLoss()
+
+    optimizer = torch.optim.Adam(net.parameters(), lr=0.005)
+
+    for _ in range(epochs):
+
+        y_pred = net(X_train)
+
+        loss_train = criterion(y_pred, y_train.long())
+
+        losses_train.append(loss_train)
+        
+        y_pred_val = net(X_val)
+        loss_val = criterion(y_pred_val, y_val.long())
+        losses_val.append(loss_val)
+        test_acc = y_val[y_val.long()==torch.argmax(y_pred_val,axis=1)].shape[0]/y_val.shape[0]
+        acc.append(test_acc)
+
+        nets.append(deepcopy(net))
+
+        optimizer.zero_grad()
+        loss_train.backward()
+        optimizer.step()
+
+    return max(acc), nets[np.argmax(np.asarray(acc))]
+
+
+
+
 
 
 def train(X_train, y_train, X_val, y_val , epochs=35, lr=0.1):
@@ -295,11 +388,12 @@ def handle_args(argv):
     params = ""
     single = False
     time = 48
+    threshold = 0
 
     try:
-        opts, args = getopt.getopt(argv,"hc:p:t:s",["clf=","params=", "time=","single"])
+        opts, args = getopt.getopt(argv,"hc:p:t:s:",["clf=","params=", "time=", "single", "threshold="])
     except getopt.GetoptError:
-        print('python3 cross_validation.py --clf <clf> --params <p1,p2,p3> [--time=t --single]')
+        print('python3 cross_validation.py --clf <clf> --params <p1,p2,p3> [--time=t --single --threshold=#]')
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
@@ -313,7 +407,8 @@ def handle_args(argv):
             time = arg
         elif opt in ("-s", "--single"):
             single = True
-
+        elif opt == "--threshold":
+            threshold = int(arg)
 
     if clf == "svm":
         clf_func = lambda x: svm.SVC(kernel='linear', C=x, random_state=1)
@@ -334,21 +429,20 @@ def handle_args(argv):
     if(len(params) > 0):
         params = [float(elem) for elem in params.split(',')]
 
-    return clf_func, params, clf, time, single
+    return clf_func, params, clf, time, single, threshold
 
 def main(argv):
 
 
     num_shuffles = 10
-    clf_func, params, clf_str, time, single = handle_args(argv)
-
+    clf_func, params, clf_str, time, single, threshold = handle_args(argv)
     edges, features, ind_to_neuron = get_network(time=time) 
 
     X, y = network_to_mat(edges,features)
   
     # If feature is > 0, set to 1
     # If feature == 0, set to 0
-    y[y > 0] = 1
+    y[y > threshold] = 1
     # np.random.shuffle(y) to shuffle labels
 
     Xs = []
