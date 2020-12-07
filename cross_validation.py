@@ -374,13 +374,14 @@ def calc_entropy(X, y):
 def lin_regression(X, y):
 
     r2_values = []
+    p_values = []
 
     for i in range(X.shape[1]):
-
         slope, intercept, r_value, p_value, std_err = stats.linregress(X[:,i],y)
         r2_values.append(r_value**2)
+        p_values.append(p_value)
 
-    return np.asarray(r2_values)
+    return np.asarray(r2_values), np.asarray(p_values)
         
 def handle_args(argv):
 
@@ -474,14 +475,31 @@ def main(argv):
 
         if(single):
             r2_values = np.zeros(Xs[0].shape[1])
+            p_values = np.zeros(Xs[0].shape[1])
 
             for i in range(num_shuffles):
                 X = Xs[i]
                 y = ys[i]
 
-                r2_values = r2_values * (i)/float(i+1) + lin_regression(X,y) / float(i+1)
+                r2, p = lin_regression(X,y)
+                
+                r2_values = r2_values * (i)/float(i+1) + r2 / float(i+1)
+                p_values = p_values * (i)/float(i+1) + p / float(i+1)
 
             np.savetxt("r2.txt", r2_values, fmt='%10.5f')
+            np.savetxt("p.txt", p_values)
+
+            alpha = 0.05
+            threshold = alpha / len(y)
+            # TODO: indexing may be off
+            i = 0
+            cnt = 0
+            while i < len(p_values):
+                if p_values[i] <= threshold:
+                    print("SNP " + str(i) +  " has p-value " + str(p_values[i]))
+                    cnt += 1
+                i += 1
+            print(cnt)
 
         else:
 
