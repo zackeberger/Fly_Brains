@@ -1,11 +1,13 @@
 # Synapse Prediction in Drosophila Melanogaster
 We used adult connectome &amp; developmental transcriptome data to predict synaptic connections for neurons in a Drosophila Melanogaster brain. 
-[[Link to Paper]](http://www.joshvendrow.com/CSM226/report.pdf)
+This repository contains the codebae for our project.
 
-This repository contains the codebae for our project:
 
-*"Synapse Prediction in Drosophila Melanogaster."* <br/>
-By Joshua Vendrow, Alexandra Schtein, and Zachary Berger.
+
+*"[[Synapse Prediction in Drosophila Melanogaster]](http://www.joshvendrow.com/CSM226/report.pdf)"* by
+Joshua Vendrow, Alexandra Schtein, and Zachary Berger. 
+
+
 
 
 
