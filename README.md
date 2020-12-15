@@ -8,7 +8,7 @@ We used adult connectome &amp; developmental transcriptome data to predict synap
 [[Link to Paper]](http://www.joshvendrow.com/CSM226/report.pdf)
 ---
 
-![Minion](./figures/Figure_2.png)
+![graph](./figures/Figure_2.png =100x20)
 
 <br /><br />
 
