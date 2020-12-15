@@ -4,8 +4,8 @@ This repository contains the codebae for our project; see the link for our repor
 
 
 
-*"[[Synapse Prediction in Drosophila Melanogaster]](http://www.joshvendrow.com/CSM226/report.pdf)"*\
-by Joshua Vendrow, Alexandra Schtein, and Zachary Berger. 
+*"[Synapse Prediction in Drosophila Melanogaster](http://www.joshvendrow.com/CSM226/report.pdf)"*\ by
+Joshua Vendrow, Alexandra Schtein, and Zachary Berger. 
 
 
 ---
