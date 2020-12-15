@@ -1,12 +1,15 @@
 import math
 import random
 import csv
-from collections import Counter
 import sys
 import getopt
+import time
 import numpy as np
-from tqdm import tqdm, trange
+import matplotlib.pyplot as plt
+from collections import Counter
 from copy import deepcopy
+from tqdm import tqdm, trange
+from scipy import stats
 
 #sklearn library
 from sklearn.tree import DecisionTreeClassifier
@@ -20,18 +23,18 @@ from sklearn.linear_model import LinearRegression
 from sklearn import svm
 from sklearn import metrics
 
+# Import pytorch
 import torch
 import torch.nn as nn
 import torch.nn.functional as func
 
-import time
-
-from scipy import stats
-
-import matplotlib.pyplot as plt
-
 from data_loading import *
 
+
+# Neural network implementations
+# ----------------------------------
+
+# NN definition using PyTorch
 class Net(nn.Module):
 
     def __init__(self, m):
@@ -65,99 +68,7 @@ class Net(nn.Module):
         return x
 
 
-class GNN():
-    def __init__(self, N, D, H, F, num_layers=2):
-        super(GNN, self).__init__()
-
-        self.Ws = []
-        self.num_layers = num_layers
-
-        lay_dim = [D] + H + [F]
-        for i in range(num_layers):
-            fc = nn.Linear(lay_dim[i+1], lay_dim[i], bias=False)
-            self.Ws.append(fc)
-
-
-    def forward(self, A, X):
-        
-        A_hat = get_A_hat(A)
-        x = X
-        
-        for i in range(self.num_layers):
-            x = A_hat @ self.Ws[i](X.T).T
-            if i < self.num_layers - 1:
-                x = Func.relu(X)
-    
-        return nn.Softmax(x)
-
-
-    def get_squig():
-        print("squig")
-
-    # A, A_hat are NxN
-    # X is NxD
-    # W_0 is DxH -- H is hidden layer size
-    # W_1 is HxF -- F is # of classes
-    # Z is NxF
-
-    def get_A_hat(A):
-         
-        A_squig = A + np.identity(A.shape(0))
-        D_squig = np.diag(A_squig.sum(axis=1)) # Axis is 0 or 1. Look this up.
-        
-        D_squig_mod = np.diag(np.power(D_squig, -0.5))
-        A_hat = D_squig_mod @ A_squig @ D_squig_mod
-        
-        return A_hat
-
-
-
-
-def train_GNN(X_train, y_train, X_val, y_val , epochs=35, lr=0.1):
-
-    X_train = torch.Tensor(X_train)#.cuda()
-    y_train = torch.Tensor(y_train)#.cuda()
-    X_val = torch.Tensor(X_val)#.cuda()
-    y_val = torch.Tensor(y_val)#.cuda()
-
-    net = Net(X_train.shape[1])#.cuda()
-
-    losses_train = []
-    losses_val = []
-    acc = []
-    nets = []
-
-    criterion = nn.CrossEntropyLoss()
-
-    optimizer = torch.optim.Adam(net.parameters(), lr=0.005)
-
-    for _ in range(epochs):
-
-        y_pred = net(X_train)
-
-        loss_train = criterion(y_pred, y_train.long())
-
-        losses_train.append(loss_train)
-        
-        y_pred_val = net(X_val)
-        loss_val = criterion(y_pred_val, y_val.long())
-        losses_val.append(loss_val)
-        test_acc = y_val[y_val.long()==torch.argmax(y_pred_val,axis=1)].shape[0]/y_val.shape[0]
-        acc.append(test_acc)
-
-        nets.append(deepcopy(net))
-
-        optimizer.zero_grad()
-        loss_train.backward()
-        optimizer.step()
-
-    return max(acc), nets[np.argmax(np.asarray(acc))]
-
-
-
-
-
-
+# Train neural network
 def train(X_train, y_train, X_val, y_val , epochs=35, lr=0.1):
 
     X_train = torch.Tensor(X_train)#.cuda()
@@ -199,6 +110,7 @@ def train(X_train, y_train, X_val, y_val , epochs=35, lr=0.1):
     return max(acc), nets[np.argmax(np.asarray(acc))]
     
 
+
 # Model Training Process
 # ----------------------------------
 
@@ -217,6 +129,7 @@ def cross_validation_net(X, y, num_splits = 5, epochs=35, lr=0.1):
 
 
     return total_acc / num_splits
+
 
 def get_accuracy_net(X_train, y_train, X_test, y_test, num_splits=5, epochs=35, lrs=[0.1]): 
 
@@ -245,6 +158,7 @@ def get_accuracy_net(X_train, y_train, X_test, y_test, num_splits=5, epochs=35, 
 
 
     return test_acc, test_acc_0, test_acc_1
+
 
 def net_single(X_train, y_train, X_test, y_test, num_splits=5, epochs=35, lrs=[0.1]):
 
@@ -278,6 +192,7 @@ def net_single(X_train, y_train, X_test, y_test, num_splits=5, epochs=35, lrs=[0
 
     return np.asarray(accuracies)
 
+
 def cross_validation(clf_func, X, y, param, num_splits = 5):
     """
     Given a classifier clf and training data X with labels y, performs
@@ -299,6 +214,7 @@ def cross_validation(clf_func, X, y, param, num_splits = 5):
 
     return total_acc / num_splits
 
+
 def select_parameters(X, y, clf_func, params, num_splits = 5):
     """
     Performs hyperparemeter selection on training data.
@@ -317,6 +233,7 @@ def select_parameters(X, y, clf_func, params, num_splits = 5):
 
     return best_acc, best_param
 
+
 def get_accuracy(X_train, y_train, X_test, y_test, clf_func, params, num_splits = 5):
 
     best_acc, best_param = select_parameters(X_train, y_train, clf_func, params, num_splits=5)
@@ -330,6 +247,7 @@ def get_accuracy(X_train, y_train, X_test, y_test, clf_func, params, num_splits 
     acc_1 = metrics.accuracy_score(y_test[y_test==1], y_pred[y_test==1])
 
     return acc, acc_0, acc_1, best_param
+
 
 def run_single(X_train, y_train, X_test, y_test, clf_func, params, num_splits=5):
 
@@ -349,6 +267,7 @@ def run_single(X_train, y_train, X_test, y_test, clf_func, params, num_splits=5)
         accuracies.append(acc)
 
     return np.asarray(accuracies)
+
 
 def calc_entropy(X, y):
 
@@ -371,6 +290,7 @@ def calc_entropy(X, y):
 
     return np.asarray(entropy_gain)
 
+
 def lin_regression(X, y):
 
     r2_values = []
@@ -382,7 +302,8 @@ def lin_regression(X, y):
         p_values.append(p_value)
 
     return np.asarray(r2_values), np.asarray(p_values)
-        
+
+
 def handle_args(argv):
 
     clf = ""
@@ -431,6 +352,7 @@ def handle_args(argv):
         params = [float(elem) for elem in params.split(',')]
 
     return clf_func, params, clf, time, single, threshold
+
 
 def main(argv):
 
@@ -585,6 +507,7 @@ def main(argv):
             print("Accuracy non:     ", accs_0 / num_shuffles)
             print("Accuracy high:    ", accs_1 / num_shuffles)
             print(best_params)
+
 
 if __name__ == '__main__':
     main(sys.argv[1:])
