@@ -2,17 +2,20 @@ import numpy as np
 
 
 def get_data(time=48):
-
+"""
+Import the datasets
+"""
     M1_data = np.genfromtxt('./data/20201021_adult_connectome_M1.txt', delimiter=',', dtype = "str", skip_header=1)
-
     M5_data = np.genfromtxt('./data/20201021_adult_connectome_M5.txt', delimiter=',', dtype = "str", skip_header=1)
-
     Trans_data = np.genfromtxt('./data/20201021_developmental_transcriptome_' + str(time) + 'h.txt', delimiter=',', dtype = "str", skip_header=1)
 
     return M1_data, M5_data, Trans_data
 
-def np_to_edgelist(edges, features):
 
+def np_to_edgelist(edges, features):
+"""
+Create an edgelist for the connectome network
+"""
     neuron_to_feature = {features[i,0]:features[i,1:] for i in range(features.shape[0])}
 
     i = 0
@@ -28,7 +31,6 @@ def np_to_edgelist(edges, features):
     neurons = np.unique(edges[:,[0,1]])
 
     #print(neurons)
-
     neuron_to_ind = {neurons[ind]:ind for ind in range(neurons.shape[0])}
     ind_to_neuron = {ind:neurons[ind] for ind in range(neurons.shape[0])}
 
@@ -46,15 +48,18 @@ def np_to_edgelist(edges, features):
 
     return edgelist, features_arr, ind_to_neuron 
 
-def get_network(time=48):
 
+def get_network(time=48):
+"""
+Get network with corresponding features
+"""
     M1, M5, trans_data = get_data(time=time)
     edges, features, ind_to_neurons = np_to_edgelist(M1, trans_data)
 
     return edges, features, ind_to_neurons
 
-def network_to_mat(edges, features):
 
+def network_to_mat(edges, features):
     e, m = features.shape
     n = len(edges)
 
@@ -62,7 +67,6 @@ def network_to_mat(edges, features):
     Y = np.zeros(n)
 
     for i in range(n):
-
         u, v, w = edges[i]
         X[i,:m] = features[u]
         X[i,m:] = features[v]
