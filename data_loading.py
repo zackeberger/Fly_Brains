@@ -1,25 +1,13 @@
-import scipy
-from scipy import stats
 import numpy as np
-from numpy.random import seed
-from numpy.random import randn
-from numpy import mean
-from numpy import std
-#from matplotlib import ply
-import matplotlib.pyplot as plt
-from random import randint
-import argparse
-from numpy import genfromtxt
-from numpy import add
 
 
 def get_data(time=48):
 
-    M1_data = genfromtxt('./data/20201021_adult_connectome_M1.txt', delimiter=',', dtype = "str", skip_header=1)
+    M1_data = np.genfromtxt('./data/20201021_adult_connectome_M1.txt', delimiter=',', dtype = "str", skip_header=1)
 
-    M5_data = genfromtxt('./data/20201021_adult_connectome_M5.txt', delimiter=',', dtype = "str", skip_header=1)
+    M5_data = np.genfromtxt('./data/20201021_adult_connectome_M5.txt', delimiter=',', dtype = "str", skip_header=1)
 
-    Trans_data = genfromtxt('./data/20201021_developmental_transcriptome_' + str(time) + 'h.txt', delimiter=',', dtype = "str", skip_header=1)
+    Trans_data = np.genfromtxt('./data/20201021_developmental_transcriptome_' + str(time) + 'h.txt', delimiter=',', dtype = "str", skip_header=1)
 
     return M1_data, M5_data, Trans_data
 
